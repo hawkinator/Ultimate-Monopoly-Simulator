@@ -1,5 +1,7 @@
 import random
 import os
+import json
+from os.path import exists
 
 class Player:
 	def __init__(self, name, number):
@@ -1045,26 +1047,83 @@ def landOnSpace(token, coords):
 		pass
 	elif Gameboard.spaceType[coords[0]][coords[1]] == "Reverse Direction":
 		pass
+		
+def setUpNewGame():
+	inputLoop = True
+	while inputLoop:
+		playerNum = input("How many players?")
+		if playerNum.isnumeric():
+			playerNum = int(playerNum)
+			if playerNum < 2:
+				print("Must be a minimum of 2 players.")
+			else:
+				inputLoop = False
+		else:
+			print("Please enter a number")
+	for i in range(playerNum):
+		listPlayers.append(Player(input(f"Player {i+1} name?"),i))
+def readSaveFile():
+	savFile = open("ultimate_game.sav", "r")
+	global resumeCurrentPlayer
+	resumeCurrentPlayer = json.loads(savFile.readline())
+	global resumeEndTurn
+	resumeEndTurn = json.loads(savFile.readline())
+	playerNum = json.loads(savFile.readline())
+	for i in range(playerNum):
+		readNumber = json.loads(savFile.readline())
+		if readNumber != i:
+			print("Something is probably wrong")
+		playerNameFile = json.loads(savFile.readline())
+		listPlayers.append(Player(playerNameFile, i))
+		listPlayers[i].BoardPosition = json.loads(savFile.readline())
+		listPlayers[i].PlayerMoney = json.loads(savFile.readline())
+		listPlayers[i].OwnedProps = json.loads(savFile.readline())
+		for j in range(len(listPlayers[i].OwnedProps)):
+			Gameboard.propList[listPlayers[i].OwnedProps[j]][2] = listPlayers[i].Playernumber
+		print(listPlayers[i].OwnedProps)
+		listPlayers[i].IsInJail = json.loads(savFile.readline())
+		listPlayers[i].turnsInJail = json.loads(savFile.readline())
+		listPlayers[i].isBankrupt = json.loads(savFile.readline())
+		listPlayers[i].travelVouchers = json.loads(savFile.readline())
+		listPlayers[i].heldActionCards = json.loads(savFile.readline())
+		listPlayers[i].rollThreeCards = json.loads(savFile.readline())
+		listPlayers[i].ownedColorGroups = json.loads(savFile.readline())
+		listPlayers[i].ownsImprovableCG = json.loads(savFile.readline())
+	savFile.close()
 
 gameloop = True
-
-playerNum = int(input("How many players?"))
-if playerNum < 2:
-	print("Must be a minimum of 2 players.")
-	playerNum = 2
 listPlayers = []
-for i in range(playerNum):
-	listPlayers.append(Player(input(f"Player {i+1} name?"),i))
+resumingFromFile = False
+
+if exists("ultimate_game.sav"):
+	response = input("A save file exists, would you like to load it(y/n)?")
+	if response == "y" or response == "Y" or response == "yes":
+		readSaveFile()
+		resumingFromFile = True
+	else:
+		setUpNewGame()
+else:
+	setUpNewGame()
 
 if os.name == "nt":
-	os.system('cls')
+	pass
+	#os.system('cls')
 else:
 	os.system('clear')
 isTurn = True
 rollDoublesCount = 0
+
 while gameloop == True:
 	for currentPlayer in range(len(listPlayers)):
+		if resumingFromFile == True and currentPlayer < resumeCurrentPlayer:
+			print("debug 1")
+			continue
+		print("debug 2")
 		endTurn = False
+		if resumingFromFile == True:
+			endTurn = resumeEndTurn
+			resumingFromFile = False
+			print("debug 3")
 		isTurn = True
 		if listPlayers[currentPlayer].isBankrupt == False:
 			while isTurn == True:
@@ -1103,6 +1162,12 @@ while gameloop == True:
 						endTurn = True
 					if cheating == "property":
 						print(Gameboard.propList[int(input("?"))])
+					if cheating == "chance":
+						cardToRead = int(input("card"))
+						readActionCard(actionCards.chanceCards[cardToRead], listPlayers[currentPlayer], listPlayers[currentPlayer].BoardPosition)
+					if cheating == "chest":
+						cardToRead = int(input("card"))
+						readActionCard(actionCards.chestCards[cardToRead], listPlayers[currentPlayer], listPlayers[currentPlayer].BoardPosition)
 				if response == "i" and listPlayers[currentPlayer].ownsImprovableCG == True:
 					improveProps(listPlayers[currentPlayer])
 				if response == "r" and endTurn == False and listPlayers[currentPlayer].IsInJail == False:
@@ -1156,4 +1221,40 @@ while gameloop == True:
 			break
 		if gameloop == False:
 			break
+savFile = open("ultimate_game.sav", "w")
+json.dump(currentPlayer, savFile)
+savFile.write("\n")
+json.dump(endTurn, savFile)
+savFile.write("\n")
+json.dump(len(listPlayers), savFile)
+savFile.write("\n")
+for i in range(len(listPlayers)):
+	json.dump(listPlayers[i].Playernumber, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].PlayerName, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].BoardPosition, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].PlayerMoney, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].OwnedProps, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].IsInJail, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].turnsInJail, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].isBankrupt, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].travelVouchers, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].heldActionCards, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].rollThreeCards, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].ownedColorGroups, savFile)
+	savFile.write("\n")
+	json.dump(listPlayers[i].ownsImprovableCG, savFile)
+	savFile.write("\n")
+
+savFile.close()
 print("Thank you for playing Ultimate Monopoly")
